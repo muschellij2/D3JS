@@ -134,9 +134,11 @@ xdata[measurements == 3]
 
 # these indices are for the whole data.frame
 rm.ind = which(xs)[measurements == 3]
-dat$lotSize[rm.ind]
-# remove these 
-dat = dat[-rm.ind, ]
+if (length(rm.ind) > 0) {
+  dat$lotSize[rm.ind]
+  # remove these 
+  dat = dat[-rm.ind, ]
+}
 
 ################################
 # Delete data with no tax info
@@ -159,7 +161,18 @@ sqft_data = sapply(ss, function(x){
 xdata[is.na(sqft_data)]
 x_orig_data[is.na(sqft_data)]
 
-dat = dat[ !is.na(sqft_data), ]
+dat$lotSize[xs] = sqft_data
+dat = filter(dat, !is.na(dat$lotSize))
+
+dat$lotSize = gsub(" SQ FT", "", dat$lotSize)
+dat$lotSize = gsub("13O4", "1304", dat$lotSize)
+
+bad = dat[ is.na(as.numeric(dat$lotSize)), ]
+print(head(bad))
+stopifnot(nrow(bad) <= 3)
+
+dat$lotSize =  as.numeric(dat$lotSize)
+dat = filter(dat, !is.na(dat$lotSize))
 
 cc = complete.cases(dat)
 
@@ -167,7 +180,14 @@ stopifnot(all(cc))
 #################
 # Need some robust code
 
-write_csv(dat, path = file.path(mod_dir, 
-                                gsub("[.]csv", 
-                                     "_residences_with_Taxes_cleaned.csv", 
-                                     fname)))
+new_fname = gsub("[.]csv", 
+                 "_residences_with_Taxes_cleaned.csv", 
+                 fname)
+write_csv(dat, 
+          path = new_fname)
+
+new_samp_fname = gsub("[.]csv", 
+                      "_residences_with_Taxes_cleaned_sample.csv", 
+                      fname)
+write_csv(dat[sample(nrow(dat), size = 1e4),], 
+          path = new_samp_fname)
